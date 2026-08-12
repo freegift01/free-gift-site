@@ -23,7 +23,7 @@ export default function LandingPage() {
 
       if (res.ok) {
         setStatus("success");
-        setMessage(data.message);
+        setMessage("Your book has been sent to your email! Please check your inbox.");
         setEmail("");
       } else {
         setStatus("error");
@@ -74,7 +74,7 @@ export default function LandingPage() {
               fontSize: "clamp(2.2rem, 5vw, 3.5rem)",
             }}
           >
-            Get a <span className="text-yellow-300">Free Puzzle Ebook</span><br />
+            Get a <span className="text-yellow-300">Free Crossword Puzzle Book</span><br />
             Every Day for 30 Days!
           </h1>
 
@@ -83,7 +83,7 @@ export default function LandingPage() {
             className="animate-fade-in-up delay-200 text-white/90 mb-10 max-w-xl mx-auto leading-relaxed"
             style={{ fontSize: "1.25rem" }}
           >
-            Brain teasers, crosswords, sudoku, and more — delivered straight to your inbox.
+            Crossword puzzles delivered straight to your inbox.
             Keep your mind sharp and entertained!
           </p>
 
@@ -137,7 +137,7 @@ export default function LandingPage() {
                 ) : (
                   <>
                     <span className="text-2xl">📚</span>
-                    Send me free puzzle
+                    Send me free crossword puzzles
                   </>
                 )}
               </button>
@@ -232,7 +232,7 @@ export default function LandingPage() {
               {
                 icon: "📬",
                 title: "2. Check Your Inbox",
-                desc: "Your first free puzzle ebook arrives instantly.",
+                desc: "Your first free crossword puzzle book arrives instantly.",
                 color: "#7c3aed",
               },
               {

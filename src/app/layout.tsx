@@ -9,14 +9,14 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Free Daily Ebooks | 30-Day Puzzle Book Series",
+  title: "Free Daily Ebooks | 30-Day Crossword Puzzle Series",
   description:
-    "Sign up to receive a free puzzle ebook every day for 30 days. Brain teasers, crosswords, sudoku, and more delivered straight to your inbox!",
-  keywords: ["free ebooks", "puzzle books", "brain teasers", "daily ebooks", "free books"],
+    "Sign up to receive a free crossword puzzle book every day for 30 days. Delivered straight to your inbox!",
+  keywords: ["free ebooks", "crossword puzzles", "crossword books", "daily ebooks", "free puzzle books"],
   openGraph: {
-    title: "Free Daily Ebooks | 30-Day Puzzle Book Series",
+    title: "Free Daily Ebooks | 30-Day Crossword Puzzle Series",
     description:
-      "Sign up to receive a free puzzle ebook every day for 30 days!",
+      "Sign up to receive a free crossword puzzle book every day for 30 days!",
     type: "website",
     url: "https://notification.electedbooks.com",
   },

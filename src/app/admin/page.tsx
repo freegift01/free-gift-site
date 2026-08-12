@@ -20,14 +20,31 @@ interface ScheduleSlot {
   book?: Book | null;
 }
 
+interface Subscriber {
+  id: string;
+  email: string;
+  status: string;
+  currentDay: number;
+  startDate: string;
+  lastSentAt: string | null;
+}
+
 export default function AdminDashboard() {
   const [books, setBooks] = useState<Book[]>([]);
   const [slots, setSlots] = useState<ScheduleSlot[]>([]);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState<"books" | "schedule">("books");
+  const [activeTab, setActiveTab] = useState<"books" | "schedule" | "subscribers">("books");
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [expandedDay, setExpandedDay] = useState<number | null>(null);
+
+  // Subscriber management state
+  const [subscribers, setSubscribers] = useState<Subscriber[]>([]);
+  const [subscribersLoading, setSubscribersLoading] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [perPage, setPerPage] = useState<number | "all">(25);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [bulkActionLoading, setBulkActionLoading] = useState(false);
 
   const showToast = (type: "success" | "error", message: string) => {
     setToast({ type, message });
@@ -54,10 +71,29 @@ export default function AdminDashboard() {
     }
   }, []);
 
+  const fetchSubscribers = useCallback(async () => {
+    setSubscribersLoading(true);
+    try {
+      const res = await fetch("/api/admin/subscribers");
+      const data = await res.json();
+      if (res.ok) setSubscribers(data.subscribers || []);
+    } catch (err) {
+      console.error("Failed to fetch subscribers:", err);
+    } finally {
+      setSubscribersLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     fetchBooks();
     fetchSchedule();
   }, [fetchBooks, fetchSchedule]);
+
+  useEffect(() => {
+    if (activeTab === "subscribers" && subscribers.length === 0) {
+      fetchSubscribers();
+    }
+  }, [activeTab, subscribers.length, fetchSubscribers]);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -186,6 +222,129 @@ export default function AdminDashboard() {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
+  // ==========================================
+  // Subscriber Management Logic
+  // ==========================================
+
+  const totalSubscribers = subscribers.length;
+  const effectivePerPage = perPage === "all" ? totalSubscribers : perPage;
+  const totalPages = effectivePerPage > 0 ? Math.max(1, Math.ceil(totalSubscribers / effectivePerPage)) : 1;
+  const safePage = Math.min(currentPage, totalPages);
+  const paginatedSubscribers = perPage === "all"
+    ? subscribers
+    : subscribers.slice((safePage - 1) * effectivePerPage, safePage * effectivePerPage);
+
+  const allOnPageSelected = paginatedSubscribers.length > 0 && paginatedSubscribers.every((s) => selectedIds.has(s.id));
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (allOnPageSelected) {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        paginatedSubscribers.forEach((s) => next.delete(s.id));
+        return next;
+      });
+    } else {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        paginatedSubscribers.forEach((s) => next.add(s.id));
+        return next;
+      });
+    }
+  };
+
+  const handleBulkUnsubscribe = async () => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    if (!confirm(`Unsubscribe ${ids.length} selected subscriber(s)? They will remain in records but stop receiving emails.`)) return;
+
+    setBulkActionLoading(true);
+    try {
+      const res = await fetch("/api/admin/subscribers", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showToast("success", `${data.count} subscriber(s) unsubscribed.`);
+        setSelectedIds(new Set());
+        fetchSubscribers();
+      } else {
+        showToast("error", data.error || "Failed to unsubscribe");
+      }
+    } catch {
+      showToast("error", "Connection error");
+    } finally {
+      setBulkActionLoading(false);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    if (!confirm(`PERMANENTLY DELETE ${ids.length} selected subscriber(s)? This action cannot be undone.`)) return;
+
+    setBulkActionLoading(true);
+    try {
+      const res = await fetch("/api/admin/subscribers", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showToast("success", `${data.count} subscriber(s) permanently deleted.`);
+        setSelectedIds(new Set());
+        fetchSubscribers();
+      } else {
+        showToast("error", data.error || "Failed to delete");
+      }
+    } catch {
+      showToast("error", "Connection error");
+    } finally {
+      setBulkActionLoading(false);
+    }
+  };
+
+  const handleDownloadCSV = () => {
+    if (subscribers.length === 0) {
+      showToast("error", "No subscribers to export.");
+      return;
+    }
+    const headers = ["Email", "Status", "Current Day", "Start Date", "Last Sent At"];
+    const rows = subscribers.map((s) =>
+      [
+        s.email,
+        s.status,
+        String(s.currentDay),
+        new Date(s.startDate).toLocaleString(),
+        s.lastSentAt ? new Date(s.lastSentAt).toLocaleString() : "",
+      ]
+        .map((val) => `"${val.replace(/"/g, '""')}"`)
+        .join(",")
+    );
+    const csvContent = [headers.join(","), ...rows].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `subscribers_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    showToast("success", `CSV exported: ${subscribers.length} subscriber(s).`);
+  };
+
   const duplicateBookIds = getDuplicateBookIds();
 
   return (
@@ -226,7 +385,7 @@ export default function AdminDashboard() {
 
       {/* Tab Navigation */}
       <div className="flex gap-2 mb-8">
-        {(["books", "schedule"] as const).map((tab) => (
+        {(["books", "schedule", "subscribers"] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -240,7 +399,7 @@ export default function AdminDashboard() {
             }}
             id={`tab-${tab}`}
           >
-            {tab === "books" ? "📚 Book Library" : "📅 Drip Schedule"}
+            {tab === "books" ? "📚 Book Library" : tab === "schedule" ? "📅 Drip Schedule" : "👥 Subscribers"}
           </button>
         ))}
       </div>
@@ -541,6 +700,249 @@ export default function AdminDashboard() {
               {saving ? "Saving..." : "💾 Save Schedule"}
             </button>
           </div>
+        </div>
+      )}
+
+      {/* ===== SUBSCRIBERS TAB ===== */}
+      {activeTab === "subscribers" && (
+        <div className="animate-fade-in">
+          {/* Toolbar */}
+          <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+            <div className="flex items-center gap-3">
+              {/* Per-page selector */}
+              <label className="text-gray-400 flex items-center gap-2" style={{ fontSize: "0.9rem", fontFamily: "var(--font-inter), sans-serif" }}>
+                Show:
+                <select
+                  value={perPage === "all" ? "all" : String(perPage)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setPerPage(val === "all" ? "all" : Number(val));
+                    setCurrentPage(1);
+                    setSelectedIds(new Set());
+                  }}
+                  className="px-3 py-2 rounded-lg text-white border-0 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  style={{ background: "rgba(255, 255, 255, 0.08)", fontSize: "0.9rem" }}
+                  id="per-page-selector"
+                >
+                  <option value="25" style={{ background: "#1e1e2e" }}>25</option>
+                  <option value="50" style={{ background: "#1e1e2e" }}>50</option>
+                  <option value="100" style={{ background: "#1e1e2e" }}>100</option>
+                  <option value="200" style={{ background: "#1e1e2e" }}>200</option>
+                  <option value="all" style={{ background: "#1e1e2e" }}>All</option>
+                </select>
+              </label>
+              <span className="text-gray-500" style={{ fontSize: "0.85rem" }}>
+                {totalSubscribers} total subscriber{totalSubscribers !== 1 ? "s" : ""}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {/* Bulk actions */}
+              <button
+                onClick={handleBulkUnsubscribe}
+                disabled={selectedIds.size === 0 || bulkActionLoading}
+                className="px-4 py-2 rounded-lg font-medium transition-all"
+                style={{
+                  background: selectedIds.size > 0 ? "rgba(251, 191, 36, 0.15)" : "rgba(255, 255, 255, 0.05)",
+                  color: selectedIds.size > 0 ? "#fbbf24" : "#6b7280",
+                  border: "1px solid " + (selectedIds.size > 0 ? "rgba(251, 191, 36, 0.3)" : "rgba(255, 255, 255, 0.08)"),
+                  fontSize: "0.85rem",
+                  fontFamily: "var(--font-inter), sans-serif",
+                  cursor: selectedIds.size === 0 || bulkActionLoading ? "not-allowed" : "pointer",
+                  opacity: bulkActionLoading ? 0.6 : 1,
+                }}
+                id="unsubscribe-selected-button"
+              >
+                Unsubscribe Selected {selectedIds.size > 0 && `(${selectedIds.size})`}
+              </button>
+              <button
+                onClick={handleBulkDelete}
+                disabled={selectedIds.size === 0 || bulkActionLoading}
+                className="px-4 py-2 rounded-lg font-medium transition-all"
+                style={{
+                  background: selectedIds.size > 0 ? "rgba(239, 68, 68, 0.15)" : "rgba(255, 255, 255, 0.05)",
+                  color: selectedIds.size > 0 ? "#ef4444" : "#6b7280",
+                  border: "1px solid " + (selectedIds.size > 0 ? "rgba(239, 68, 68, 0.3)" : "rgba(255, 255, 255, 0.08)"),
+                  fontSize: "0.85rem",
+                  fontFamily: "var(--font-inter), sans-serif",
+                  cursor: selectedIds.size === 0 || bulkActionLoading ? "not-allowed" : "pointer",
+                  opacity: bulkActionLoading ? 0.6 : 1,
+                }}
+                id="delete-permanently-button"
+              >
+                Delete Permanently {selectedIds.size > 0 && `(${selectedIds.size})`}
+              </button>
+              <button
+                onClick={handleDownloadCSV}
+                disabled={subscribers.length === 0}
+                className="px-4 py-2 rounded-lg font-medium transition-all"
+                style={{
+                  background: "rgba(16, 185, 129, 0.15)",
+                  color: subscribers.length > 0 ? "#10b981" : "#6b7280",
+                  border: "1px solid rgba(16, 185, 129, 0.3)",
+                  fontSize: "0.85rem",
+                  fontFamily: "var(--font-inter), sans-serif",
+                  cursor: subscribers.length === 0 ? "not-allowed" : "pointer",
+                }}
+                id="download-csv-button"
+              >
+                📥 Download CSV
+              </button>
+            </div>
+          </div>
+
+          {/* Loading state */}
+          {subscribersLoading ? (
+            <div className="text-center py-16">
+              <svg className="animate-spin h-8 w-8 mx-auto text-indigo-400 mb-4" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+              <p className="text-gray-500" style={{ fontSize: "1rem" }}>Loading subscribers...</p>
+            </div>
+          ) : subscribers.length === 0 ? (
+            <div className="text-center py-16">
+              <div className="text-5xl mb-4 opacity-50">👥</div>
+              <p className="text-gray-500" style={{ fontSize: "1.1rem" }}>
+                No subscribers yet.
+              </p>
+            </div>
+          ) : (
+            <>
+              {/* Table */}
+              <div
+                className="rounded-xl overflow-hidden"
+                style={{ border: "1px solid rgba(255, 255, 255, 0.06)" }}
+              >
+                <table className="w-full" id="subscribers-table">
+                  <thead>
+                    <tr style={{ background: "rgba(255, 255, 255, 0.04)" }}>
+                      <th className="px-4 py-3 text-left" style={{ width: "40px" }}>
+                        <input
+                          type="checkbox"
+                          checked={allOnPageSelected}
+                          onChange={toggleSelectAll}
+                          className="w-4 h-4 rounded accent-indigo-500"
+                          id="select-all-checkbox"
+                        />
+                      </th>
+                      <th
+                        className="px-4 py-3 text-left text-gray-400 font-semibold"
+                        style={{ fontSize: "0.8rem", fontFamily: "var(--font-inter), sans-serif", textTransform: "uppercase", letterSpacing: "0.05em" }}
+                      >
+                        Email
+                      </th>
+                      <th
+                        className="px-4 py-3 text-left text-gray-400 font-semibold"
+                        style={{ fontSize: "0.8rem", fontFamily: "var(--font-inter), sans-serif", textTransform: "uppercase", letterSpacing: "0.05em" }}
+                      >
+                        Status
+                      </th>
+                      <th
+                        className="px-4 py-3 text-left text-gray-400 font-semibold"
+                        style={{ fontSize: "0.8rem", fontFamily: "var(--font-inter), sans-serif", textTransform: "uppercase", letterSpacing: "0.05em" }}
+                      >
+                        Day
+                      </th>
+                      <th
+                        className="px-4 py-3 text-left text-gray-400 font-semibold"
+                        style={{ fontSize: "0.8rem", fontFamily: "var(--font-inter), sans-serif", textTransform: "uppercase", letterSpacing: "0.05em" }}
+                      >
+                        Joined
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paginatedSubscribers.map((sub) => (
+                      <tr
+                        key={sub.id}
+                        className="transition-colors"
+                        style={{
+                          borderTop: "1px solid rgba(255, 255, 255, 0.04)",
+                          background: selectedIds.has(sub.id) ? "rgba(66, 99, 235, 0.08)" : "transparent",
+                        }}
+                      >
+                        <td className="px-4 py-3">
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.has(sub.id)}
+                            onChange={() => toggleSelect(sub.id)}
+                            className="w-4 h-4 rounded accent-indigo-500"
+                          />
+                        </td>
+                        <td className="px-4 py-3 text-white" style={{ fontSize: "0.9rem" }}>
+                          {sub.email}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span
+                            className="px-2.5 py-1 rounded-full font-medium"
+                            style={{
+                              fontSize: "0.75rem",
+                              background:
+                                sub.status === "ACTIVE"
+                                  ? "rgba(16, 185, 129, 0.15)"
+                                  : sub.status === "COMPLETED"
+                                  ? "rgba(59, 130, 246, 0.15)"
+                                  : "rgba(239, 68, 68, 0.15)",
+                              color:
+                                sub.status === "ACTIVE"
+                                  ? "#34d399"
+                                  : sub.status === "COMPLETED"
+                                  ? "#60a5fa"
+                                  : "#f87171",
+                            }}
+                          >
+                            {sub.status}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-gray-400" style={{ fontSize: "0.9rem" }}>
+                          {sub.currentDay}/30
+                        </td>
+                        <td className="px-4 py-3 text-gray-500" style={{ fontSize: "0.85rem" }}>
+                          {new Date(sub.startDate).toLocaleDateString()}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Pagination Controls */}
+              {perPage !== "all" && totalPages > 1 && (
+                <div className="flex items-center justify-between mt-4">
+                  <p className="text-gray-500" style={{ fontSize: "0.85rem" }}>
+                    Page {safePage} of {totalPages}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => { setCurrentPage((p) => Math.max(1, p - 1)); setSelectedIds(new Set()); }}
+                      disabled={safePage <= 1}
+                      className="px-3 py-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
+                      style={{
+                        fontSize: "0.85rem",
+                        cursor: safePage <= 1 ? "not-allowed" : "pointer",
+                        opacity: safePage <= 1 ? 0.4 : 1,
+                      }}
+                    >
+                      ← Previous
+                    </button>
+                    <button
+                      onClick={() => { setCurrentPage((p) => Math.min(totalPages, p + 1)); setSelectedIds(new Set()); }}
+                      disabled={safePage >= totalPages}
+                      className="px-3 py-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
+                      style={{
+                        fontSize: "0.85rem",
+                        cursor: safePage >= totalPages ? "not-allowed" : "pointer",
+                        opacity: safePage >= totalPages ? 0.4 : 1,
+                      }}
+                    >
+                      Next →
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
         </div>
       )}
     </div>

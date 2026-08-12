@@ -45,9 +45,15 @@ export async function sendDripEmail(subscriberId: string, dayNumber: number): Pr
             📎 Your ebook "<strong>${slot.book.title}</strong>" is attached to this email.
           </p>
         </div>
-        <p style="text-align: center; color: #9ca3af; font-size: 12px; margin-top: 16px;">
-          You're receiving this because you signed up for our 30-day free ebook series.
-        </p>
+        <div style="text-align: center; margin-top: 24px; padding-top: 16px; border-top: 1px solid #e5e7eb;">
+          <p style="color: #9ca3af; font-size: 12px; margin: 0 0 8px 0;">
+            You're receiving this because you signed up for our 30-day free ebook series.
+          </p>
+          <p style="color: #9ca3af; font-size: 12px; margin: 0;">
+            Don't want to receive these emails?
+            <a href="https://notification.electedbooks.com/api/unsubscribe?id=${subscriber.id}" style="color: #6366f1; text-decoration: underline;">Unsubscribe here</a>
+          </p>
+        </div>
       </div>
     `;
 

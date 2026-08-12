@@ -1,0 +1,53 @@
+// Prisma schema for the 30-Day Ebook Drip Funnel
+// Using PostgreSQL (Supabase) for production
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Book {
+  id           String         @id @default(uuid())
+  title        String
+  blobUrl      String
+  filename     String
+  sizeBytes    Int
+  createdAt    DateTime       @default(now())
+  scheduleSlot ScheduleSlot[]
+  deliveryLog  DeliveryLog[]
+}
+
+model ScheduleSlot {
+  dayNumber    Int     @id
+  isEnabled    Boolean @default(false)
+  bookId       String?
+  book         Book?   @relation(fields: [bookId], references: [id], onDelete: SetNull)
+  emailSubject String  @default("")
+  emailBody    String  @default("")
+  updatedAt    DateTime @updatedAt
+}
+
+model Subscriber {
+  id          String        @id @default(uuid())
+  email       String        @unique
+  status      String        @default("ACTIVE") // ACTIVE, COMPLETED, UNSUBSCRIBED
+  currentDay  Int           @default(1)
+  startDate   DateTime      @default(now())
+  lastSentAt  DateTime?
+  deliveryLog DeliveryLog[]
+}
+
+model DeliveryLog {
+  id           String   @id @default(uuid())
+  subscriberId String
+  subscriber   Subscriber @relation(fields: [subscriberId], references: [id], onDelete: Cascade)
+  dayNumber    Int
+  bookId       String
+  book         Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  sentAt       DateTime @default(now())
+  status       String   // SUCCESS, FAILED
+  errorMsg     String?
+}

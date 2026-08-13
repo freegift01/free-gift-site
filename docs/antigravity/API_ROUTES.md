@@ -2,7 +2,9 @@
 
 ## Public Routes
 - `POST /api/subscribe`: Accepts user email, validates via Zod, checks for duplicates, creates subscriber, and triggers Day 1 email.
-- `POST /api/auth/login`: Authenticates admin using environment variables. Tracks IP failure attempts (locks out for 10 hours after 5 failures).
+- `POST /api/auth/login`: Authenticates admin using database fallback to environment variables. Tracks IP failure attempts (locks out for 10 hours after 5 failures).
+- `POST /api/auth/reset-request`: Generates password reset token and emails the admin.
+- `POST /api/auth/reset-password`: Resets admin password using valid token.
 
 ## Protected Routes (Admin Middleware)
 - `GET /api/books`: Returns list of uploaded books.
@@ -14,6 +16,7 @@
 - `PATCH /api/admin/subscribers`: Bulk unsubscribes users.
 - `DELETE /api/admin/subscribers`: Bulk permanently deletes users.
 - `PATCH /api/subscribers/[id]/start-date`: Updates a subscriber's `startDate`.
+- `PATCH /api/auth/change-password`: Changes the currently logged-in admin's password.
 
 ## Cron / System Routes
 - `GET /api/cron/daily-drip`: Evaluates active subscribers and dispatches their scheduled book for the day.

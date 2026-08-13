@@ -35,7 +35,7 @@ export default function AdminDashboard() {
   const [slots, setSlots] = useState<ScheduleSlot[]>([]);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState<"books" | "schedule" | "subscribers">("books");
+  const [activeTab, setActiveTab] = useState<"books" | "schedule" | "subscribers" | "security">("books");
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [expandedDay, setExpandedDay] = useState<number | null>(null);
 
@@ -46,6 +46,10 @@ export default function AdminDashboard() {
   const [perPage, setPerPage] = useState<number | "all">(25);
   const [currentPage, setCurrentPage] = useState(1);
   const [bulkActionLoading, setBulkActionLoading] = useState(false);
+
+  // Security state
+  const [passwords, setPasswords] = useState({ current: "", new: "", confirm: "" });
+  const [passwordLoading, setPasswordLoading] = useState(false);
 
   const showToast = (type: "success" | "error", message: string) => {
     setToast({ type, message });
@@ -424,8 +428,8 @@ export default function AdminDashboard() {
       </div>
 
       {/* Tab Navigation */}
-      <div className="flex gap-2 mb-8">
-        {(["books", "schedule", "subscribers"] as const).map((tab) => (
+      <div className="flex gap-2 mb-8 overflow-x-auto pb-2">
+        {(["books", "schedule", "subscribers", "security"] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -439,7 +443,7 @@ export default function AdminDashboard() {
             }}
             id={`tab-${tab}`}
           >
-            {tab === "books" ? "📚 Book Library" : tab === "schedule" ? "📅 Drip Schedule" : "👥 Subscribers"}
+            {tab === "books" ? "📚 Book Library" : tab === "schedule" ? "📅 Drip Schedule" : tab === "subscribers" ? "👥 Subscribers" : "🔒 Security Settings"}
           </button>
         ))}
       </div>
@@ -1007,6 +1011,61 @@ export default function AdminDashboard() {
               )}
             </>
           )}
+        </div>
+      )}
+
+      {/* ===== SECURITY TAB ===== */}
+      {activeTab === "security" && (
+        <div className="animate-fade-in max-w-xl mx-auto">
+          <div className="rounded-xl p-8 border" style={{ background: "rgba(255, 255, 255, 0.03)", borderColor: "rgba(255, 255, 255, 0.06)" }}>
+            <h2 className="text-xl text-white font-bold mb-6" style={{ fontFamily: "var(--font-inter), sans-serif" }}>Change Admin Password</h2>
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              if (passwords.new !== passwords.confirm) {
+                showToast("error", "New passwords do not match.");
+                return;
+              }
+              if (passwords.new.length < 8) {
+                showToast("error", "New password must be at least 8 characters.");
+                return;
+              }
+              setPasswordLoading(true);
+              try {
+                const res = await fetch("/api/auth/change-password", {
+                  method: "PATCH",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ currentPassword: passwords.current, newPassword: passwords.new })
+                });
+                if (res.ok) {
+                  showToast("success", "Password changed successfully.");
+                  setPasswords({ current: "", new: "", confirm: "" });
+                } else {
+                  const data = await res.json();
+                  showToast("error", data.error || "Failed to change password.");
+                }
+              } catch {
+                showToast("error", "Connection error.");
+              } finally {
+                setPasswordLoading(false);
+              }
+            }} className="space-y-4">
+              <div>
+                <label className="block text-gray-400 text-sm font-medium mb-1">Current Password</label>
+                <input type="password" required value={passwords.current} onChange={(e) => setPasswords({...passwords, current: e.target.value})} className="w-full px-4 py-2.5 rounded-lg text-white border-0 focus:ring-2 focus:ring-indigo-500 bg-white/5" />
+              </div>
+              <div>
+                <label className="block text-gray-400 text-sm font-medium mb-1">New Password (min 8 chars)</label>
+                <input type="password" required minLength={8} value={passwords.new} onChange={(e) => setPasswords({...passwords, new: e.target.value})} className="w-full px-4 py-2.5 rounded-lg text-white border-0 focus:ring-2 focus:ring-indigo-500 bg-white/5" />
+              </div>
+              <div>
+                <label className="block text-gray-400 text-sm font-medium mb-1">Confirm New Password</label>
+                <input type="password" required minLength={8} value={passwords.confirm} onChange={(e) => setPasswords({...passwords, confirm: e.target.value})} className="w-full px-4 py-2.5 rounded-lg text-white border-0 focus:ring-2 focus:ring-indigo-500 bg-white/5" />
+              </div>
+              <button type="submit" disabled={passwordLoading} className="w-full py-3 rounded-lg font-semibold text-white mt-6 transition-all" style={{ background: "linear-gradient(135deg, #4263eb 0%, #7c3aed 100%)", opacity: passwordLoading ? 0.7 : 1 }}>
+                {passwordLoading ? "Updating..." : "Update Password"}
+              </button>
+            </form>
+          </div>
         </div>
       )}
     </div>

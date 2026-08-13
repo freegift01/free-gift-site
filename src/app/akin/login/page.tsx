@@ -9,6 +9,26 @@ export default function AdminLoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetMessage, setResetMessage] = useState({ text: "", type: "" });
+
+  const handleResetRequest = async () => {
+    setResetLoading(true);
+    setResetMessage({ text: "", type: "" });
+    try {
+      const res = await fetch("/api/auth/reset-request", { method: "POST" });
+      const data = await res.json();
+      if (res.ok) {
+        setResetMessage({ text: "Password reset link sent to admin email.", type: "success" });
+      } else {
+        setResetMessage({ text: data.error || "Failed to send reset email.", type: "error" });
+      }
+    } catch {
+      setResetMessage({ text: "Connection error.", type: "error" });
+    } finally {
+      setResetLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -161,11 +181,28 @@ export default function AdminLoginPage() {
                 "Sign In"
               )}
             </button>
+
+            {resetMessage.text && (
+              <div className={`mt-4 p-3 rounded-lg text-sm text-center ${resetMessage.type === 'success' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>
+                {resetMessage.text}
+              </div>
+            )}
+            
+            <div className="mt-6 text-center">
+              <button
+                type="button"
+                onClick={handleResetRequest}
+                disabled={resetLoading}
+                className="text-indigo-400 hover:text-indigo-300 text-sm transition-colors"
+              >
+                {resetLoading ? "Sending..." : "Forgot Password?"}
+              </button>
+            </div>
           </form>
         </div>
 
         <p className="text-center text-gray-500 mt-6" style={{ fontSize: "0.85rem" }}>
-          Protected admin area. Credentials are set via environment variables.
+          Protected admin area.
         </p>
       </div>
     </div>

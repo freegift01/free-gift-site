@@ -28,8 +28,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate against environment variables — NO database queries
-    if (!validateAdminCredentials(username, password)) {
+    // Validate against database first, fallback to env vars
+    const adminRecord = await prisma.adminAuth.findUnique({
+      where: { username }
+    });
+
+    let isValid = false;
+    if (adminRecord) {
+      const bcrypt = await import('bcryptjs');
+      isValid = await bcrypt.compare(password, adminRecord.passwordHash);
+    } else {
+      isValid = validateAdminCredentials(username, password);
+    }
+
+    if (!isValid) {
       // Handle failed login
       if (ipAddress !== 'unknown') {
         const newCount = (attemptRecord?.attemptCount || 0) + 1;

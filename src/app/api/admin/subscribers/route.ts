@@ -49,7 +49,7 @@ export async function GET() {
           if (enabledDays.has(day)) {
             const date = new Date(sub.startDate);
             date.setDate(date.getDate() + (day - 1));
-            scheduleEntries.push({ label: `Day ${day}: ${date.toLocaleDateString()}`, date });
+            scheduleEntries.push({ label: `[Drip Day ${day}] ${date.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })}`, date });
           }
         }
       }
@@ -61,7 +61,7 @@ export async function GET() {
       
       for (const b of targetedBroadcasts) {
         const bDate = new Date(b.scheduledDate);
-        scheduleEntries.push({ label: `Broadcast: ${bDate.toLocaleDateString()}`, date: bDate });
+        scheduleEntries.push({ label: `[Broadcast] ${bDate.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })}`, date: bDate });
       }
       
       scheduleEntries.sort((a, b) => a.date.getTime() - b.date.getTime());

@@ -10,6 +10,8 @@ async function requireAuth() {
   return null;
 }
 
+export const dynamic = 'force-dynamic';
+
 // GET: Fetch all subscribers
 export async function GET() {
   const authError = await requireAuth();
@@ -28,7 +30,49 @@ export async function GET() {
       },
     });
 
-    return Response.json({ subscribers });
+    const broadcasts = await prisma.broadcastMessage.findMany({
+      where: { status: 'SCHEDULED' }
+    });
+    
+    const scheduleSlots = await prisma.scheduleSlot.findMany({
+      where: { isEnabled: true },
+      select: { dayNumber: true }
+    });
+    const enabledDays = new Set(scheduleSlots.map(s => s.dayNumber));
+
+    const enrichedSubscribers = subscribers.map(sub => {
+      const scheduleEntries: { label: string, date: Date }[] = [];
+      
+      // 1. Drip sequence
+      if (sub.status === 'ACTIVE' && sub.currentDay <= 30) {
+        for (let day = sub.currentDay; day <= 30; day++) {
+          if (enabledDays.has(day)) {
+            const date = new Date(sub.startDate);
+            date.setDate(date.getDate() + (day - 1));
+            scheduleEntries.push({ label: `Day ${day}: ${date.toLocaleDateString()}`, date });
+          }
+        }
+      }
+
+      // 2. Broadcasts
+      const targetedBroadcasts = broadcasts.filter(b => 
+        b.targetSubscriberIds.length === 0 || b.targetSubscriberIds.includes(sub.id)
+      );
+      
+      for (const b of targetedBroadcasts) {
+        const bDate = new Date(b.scheduledDate);
+        scheduleEntries.push({ label: `Broadcast: ${bDate.toLocaleDateString()}`, date: bDate });
+      }
+      
+      scheduleEntries.sort((a, b) => a.date.getTime() - b.date.getTime());
+
+      return {
+        ...sub,
+        upcomingSchedule: scheduleEntries.map(e => e.label)
+      };
+    });
+
+    return Response.json({ subscribers: enrichedSubscribers });
   } catch (error) {
     console.error('Fetch subscribers error:', error);
     return Response.json({ error: 'Failed to fetch subscribers' }, { status: 500 });

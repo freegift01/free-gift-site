@@ -1,27 +1,32 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { verifyToken } from '@/lib/auth';
 
-export function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Only protect /admin routes (except /admin/login)
-  if (pathname.startsWith('/admin') && !pathname.startsWith('/admin/login')) {
+  // 1. Obfuscation: completely block /admin
+  if (pathname.startsWith('/admin')) {
+    return new NextResponse(null, { status: 404 });
+  }
+
+  // 2. Protect /akin routes (excluding the login page itself)
+  if (pathname.startsWith('/akin') && !pathname.startsWith('/akin/login')) {
     const token = request.cookies.get('admin_session')?.value;
-
     if (!token) {
-      const loginUrl = new URL('/admin/login', request.url);
-      return NextResponse.redirect(loginUrl);
+      return NextResponse.redirect(new URL('/akin/login', request.url));
     }
-
-    // We can't verify the JWT in the proxy (edge runtime limitation with jsonwebtoken),
-    // so we just check the cookie exists. Full verification happens in the API routes.
-    // For an extra layer, we could use jose instead, but the cookie check + server-side
-    // verification is sufficient for this use case.
+    
+    // Using jose for edge-compatible token verification
+    const payload = await verifyToken(token);
+    if (!payload) {
+      return NextResponse.redirect(new URL('/akin/login', request.url));
+    }
   }
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ['/admin/:path*'],
+  matcher: ['/admin/:path*', '/akin/:path*'],
 };

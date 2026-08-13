@@ -15,9 +15,10 @@ model Book {
   blobUrl      String
   filename     String
   sizeBytes    Int
-  createdAt    DateTime       @default(now())
-  scheduleSlot ScheduleSlot[]
-  deliveryLog  DeliveryLog[]
+  createdAt           DateTime           @default(now())
+  scheduleSlot        ScheduleSlot[]
+  deliveryLog         DeliveryLog[]
+  broadcasts          BroadcastMessage[]
 }
 
 model ScheduleSlot {
@@ -50,4 +51,25 @@ model DeliveryLog {
   sentAt       DateTime @default(now())
   status       String   // SUCCESS, FAILED
   errorMsg     String?
+}
+
+model LoginAttempts {
+  id           String    @id @default(uuid())
+  ipAddress    String    @unique
+  attemptCount Int       @default(1)
+  lockedUntil  DateTime?
+  updatedAt    DateTime  @updatedAt
+}
+
+model BroadcastMessage {
+  id                  String   @id @default(uuid())
+  scheduledDate       String   // Format: YYYY-MM-DD
+  bookId              String?
+  book                Book?    @relation(fields: [bookId], references: [id], onDelete: SetNull)
+  emailSubject        String
+  emailBody           String
+  targetSubscriberIds String[]
+  status              String   @default("SCHEDULED") // SCHEDULED, COMPLETED, FAILED
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 }

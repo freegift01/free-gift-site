@@ -1,31 +1,30 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { sendDripEmail } from '@/lib/drip';
+import { z } from 'zod';
+
+const subscribeSchema = z.object({
+  email: z.string().email('Invalid email format').trim().toLowerCase(),
+});
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { email } = body;
-
-    if (!email || typeof email !== 'string') {
+    
+    // Strict server-side schema validation using Zod
+    const validation = subscribeSchema.safeParse(body);
+    if (!validation.success) {
       return Response.json(
-        { error: 'Email is required' },
+        { error: validation.error.issues[0].message },
         { status: 400 }
       );
     }
-
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      return Response.json(
-        { error: 'Invalid email format' },
-        { status: 400 }
-      );
-    }
+    
+    const { email } = validation.data;
 
     // Check if subscriber already exists
     const existing = await prisma.subscriber.findUnique({
-      where: { email: email.toLowerCase().trim() },
+      where: { email },
     });
 
     if (existing) {
@@ -62,7 +61,7 @@ export async function POST(request: NextRequest) {
     // Create new subscriber
     const subscriber = await prisma.subscriber.create({
       data: {
-        email: email.toLowerCase().trim(),
+        email,
         status: 'ACTIVE',
         currentDay: 1,
         startDate: new Date(),
@@ -82,6 +81,7 @@ export async function POST(request: NextRequest) {
       message: 'Your first free ebook has been sent! You will continue to receive a new free ebook daily for the next 30 days.',
     }, { status: 201 });
   } catch (error) {
+    // Generic error masking
     console.error('Subscribe error:', error);
     return Response.json(
       { error: 'Something went wrong. Please try again.' },

@@ -3,6 +3,8 @@ import { put, list, del } from '@vercel/blob';
 import { prisma } from '@/lib/prisma';
 import { getAuthFromCookie } from '@/lib/auth';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   const auth = await getAuthFromCookie();
   if (!auth) {

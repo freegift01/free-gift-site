@@ -11,7 +11,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     setLoggingOut(true);
     try {
       await fetch("/api/auth/logout", { method: "POST" });
-      router.push("/admin/login");
+      router.push("/akin/login");
     } catch {
       setLoggingOut(false);
     }
@@ -45,6 +45,20 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
 
           <div className="flex items-center gap-4">
+            <a
+              href="/akin"
+              className="text-gray-400 hover:text-white transition-colors px-3 py-1.5 rounded-lg hover:bg-white/5"
+              style={{ fontSize: "0.9rem" }}
+            >
+              Drip Engine
+            </a>
+            <a
+              href="/akin/broadcast"
+              className="text-gray-400 hover:text-white transition-colors px-3 py-1.5 rounded-lg hover:bg-white/5"
+              style={{ fontSize: "0.9rem" }}
+            >
+              Broadcast Scheduler
+            </a>
             <a
               href="/"
               target="_blank"

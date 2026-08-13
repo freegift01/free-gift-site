@@ -27,6 +27,7 @@ interface Subscriber {
   currentDay: number;
   startDate: string;
   lastSentAt: string | null;
+  upcomingSchedule?: string[];
 }
 
 export default function AdminDashboard() {
@@ -51,9 +52,34 @@ export default function AdminDashboard() {
     setTimeout(() => setToast(null), 5000);
   };
 
+  const handleDateChange = async (id: string, newDateStr: string) => {
+    // Optimistic update
+    setSubscribers((prev) =>
+      prev.map((s) => (s.id === id ? { ...s, startDate: new Date(newDateStr).toISOString() } : s))
+    );
+
+    try {
+      const res = await fetch(`/api/subscribers/${id}/start-date`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ startDate: newDateStr }),
+      });
+
+      if (res.ok) {
+        showToast("success", "Subscription date updated successfully");
+        fetchSubscribers(); // Refresh to recalculate the schedule
+      } else {
+        const data = await res.json();
+        showToast("error", data.error || "Failed to update start date");
+      }
+    } catch {
+      showToast("error", "Connection error updating date");
+    }
+  };
+
   const fetchBooks = useCallback(async () => {
     try {
-      const res = await fetch("/api/books");
+      const res = await fetch("/api/books", { cache: "no-store" });
       const data = await res.json();
       if (res.ok) setBooks(data.books);
     } catch (err) {
@@ -63,7 +89,7 @@ export default function AdminDashboard() {
 
   const fetchSchedule = useCallback(async () => {
     try {
-      const res = await fetch("/api/schedule");
+      const res = await fetch("/api/schedule", { cache: "no-store" });
       const data = await res.json();
       if (res.ok) setSlots(data.slots);
     } catch (err) {
@@ -74,7 +100,7 @@ export default function AdminDashboard() {
   const fetchSubscribers = useCallback(async () => {
     setSubscribersLoading(true);
     try {
-      const res = await fetch("/api/admin/subscribers");
+      const res = await fetch("/api/admin/subscribers", { cache: "no-store" });
       const data = await res.json();
       if (res.ok) setSubscribers(data.subscribers || []);
     } catch (err) {
@@ -137,8 +163,12 @@ export default function AdminDashboard() {
         fetchBooks();
         fetchSchedule();
       } else {
-        const data = await res.json();
-        showToast("error", data.error || "Delete failed");
+        let errorMsg = `Delete failed (Status: ${res.status})`;
+        try {
+          const data = await res.json();
+          if (data.error) errorMsg = data.error;
+        } catch {}
+        showToast("error", errorMsg);
       }
     } catch {
       showToast("error", "Connection error during deletion");
@@ -273,13 +303,18 @@ export default function AdminDashboard() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ids }),
       });
-      const data = await res.json();
       if (res.ok) {
+        const data = await res.json();
         showToast("success", `${data.count} subscriber(s) unsubscribed.`);
         setSelectedIds(new Set());
         fetchSubscribers();
       } else {
-        showToast("error", data.error || "Failed to unsubscribe");
+        let errorMsg = `Failed to unsubscribe (Status: ${res.status})`;
+        try {
+          const data = await res.json();
+          if (data.error) errorMsg = data.error;
+        } catch {}
+        showToast("error", errorMsg);
       }
     } catch {
       showToast("error", "Connection error");
@@ -300,13 +335,18 @@ export default function AdminDashboard() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ids }),
       });
-      const data = await res.json();
       if (res.ok) {
+        const data = await res.json();
         showToast("success", `${data.count} subscriber(s) permanently deleted.`);
         setSelectedIds(new Set());
         fetchSubscribers();
       } else {
-        showToast("error", data.error || "Failed to delete");
+        let errorMsg = `Failed to delete (Status: ${res.status})`;
+        try {
+          const data = await res.json();
+          if (data.error) errorMsg = data.error;
+        } catch {}
+        showToast("error", errorMsg);
       }
     } catch {
       showToast("error", "Connection error");
@@ -848,7 +888,13 @@ export default function AdminDashboard() {
                         className="px-4 py-3 text-left text-gray-400 font-semibold"
                         style={{ fontSize: "0.8rem", fontFamily: "var(--font-inter), sans-serif", textTransform: "uppercase", letterSpacing: "0.05em" }}
                       >
-                        Joined
+                        Start Date
+                      </th>
+                      <th
+                        className="px-4 py-3 text-left text-gray-400 font-semibold"
+                        style={{ fontSize: "0.8rem", fontFamily: "var(--font-inter), sans-serif", textTransform: "uppercase", letterSpacing: "0.05em" }}
+                      >
+                        Upcoming Schedule
                       </th>
                     </tr>
                   </thead>
@@ -899,7 +945,25 @@ export default function AdminDashboard() {
                           {sub.currentDay}/30
                         </td>
                         <td className="px-4 py-3 text-gray-500" style={{ fontSize: "0.85rem" }}>
-                          {new Date(sub.startDate).toLocaleDateString()}
+                          <input
+                            type="date"
+                            value={new Date(sub.startDate).toISOString().split("T")[0]}
+                            onChange={(e) => handleDateChange(sub.id, e.target.value)}
+                            className="bg-transparent border border-gray-600 rounded px-2 py-1 text-white focus:outline-none focus:border-indigo-500 transition-colors"
+                          />
+                        </td>
+                        <td className="px-4 py-3 text-gray-500" style={{ fontSize: "0.85rem" }}>
+                          {sub.upcomingSchedule && sub.upcomingSchedule.length > 0 ? (
+                            <select className="bg-transparent border border-gray-600 rounded px-2 py-1 text-white focus:outline-none focus:border-indigo-500 transition-colors max-w-[200px]">
+                              {sub.upcomingSchedule.map((s, idx) => (
+                                <option key={idx} value={s} style={{ background: "#1e1e2e" }}>
+                                  {s}
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            <span className="text-gray-500 italic">No upcoming</span>
+                          )}
                         </td>
                       </tr>
                     ))}

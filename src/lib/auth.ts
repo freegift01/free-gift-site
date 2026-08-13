@@ -1,23 +1,27 @@
-import jwt from 'jsonwebtoken';
+import { SignJWT, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback-dev-secret-change-me';
+const secretKey = new TextEncoder().encode(JWT_SECRET);
 const COOKIE_NAME = 'admin_session';
 const COOKIE_MAX_AGE = 60 * 60 * 24; // 24 hours
 
 export interface AuthPayload {
   username: string;
-  iat?: number;
-  exp?: number;
+  [key: string]: any;
 }
 
-export function createToken(username: string): string {
-  return jwt.sign({ username }, JWT_SECRET, { expiresIn: '24h' });
+export async function createToken(username: string): Promise<string> {
+  return await new SignJWT({ username })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setExpirationTime('24h')
+    .sign(secretKey);
 }
 
-export function verifyToken(token: string): AuthPayload | null {
+export async function verifyToken(token: string): Promise<AuthPayload | null> {
   try {
-    return jwt.verify(token, JWT_SECRET) as AuthPayload;
+    const { payload } = await jwtVerify(token, secretKey);
+    return payload as unknown as AuthPayload;
   } catch {
     return null;
   }
@@ -28,7 +32,7 @@ export async function setAuthCookie(token: string): Promise<void> {
   cookieStore.set(COOKIE_NAME, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
+    sameSite: 'strict',
     path: '/',
     maxAge: COOKIE_MAX_AGE,
   });
@@ -43,7 +47,7 @@ export async function getAuthFromCookie(): Promise<AuthPayload | null> {
   const cookieStore = await cookies();
   const cookie = cookieStore.get(COOKIE_NAME);
   if (!cookie?.value) return null;
-  return verifyToken(cookie.value);
+  return await verifyToken(cookie.value);
 }
 
 export function validateAdminCredentials(username: string, password: string): boolean {

@@ -6,6 +6,7 @@ export default function LandingPage() {
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [message, setMessage] = useState("");
+  const [showModal, setShowModal] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,6 +26,7 @@ export default function LandingPage() {
         setStatus("success");
         setMessage("Your book has been sent to your email! Please check your inbox.");
         setEmail("");
+        setShowModal(true); // Open modal on success
       } else {
         setStatus("error");
         setMessage(data.error || "Something went wrong. Please try again.");
@@ -36,95 +38,47 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900" style={{ fontFamily: "var(--font-inter), sans-serif" }}>
       {/* Hero Section */}
-      <section className="relative flex-1 flex items-center justify-center overflow-hidden"
-        style={{
-          background: "linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)",
-        }}
-      >
-        {/* Decorative background elements */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div
-            className="absolute -top-20 -left-20 w-80 h-80 rounded-full opacity-20"
-            style={{ background: "radial-gradient(circle, #fff 0%, transparent 70%)" }}
-          />
-          <div
-            className="absolute -bottom-32 -right-32 w-96 h-96 rounded-full opacity-15"
-            style={{ background: "radial-gradient(circle, #ffd700 0%, transparent 70%)" }}
-          />
-          <div
-            className="absolute top-1/4 right-1/4 w-48 h-48 rounded-full opacity-10 animate-pulse-gentle"
-            style={{ background: "radial-gradient(circle, #fff 0%, transparent 70%)" }}
-          />
-        </div>
-
-        <div className="relative z-10 max-w-3xl mx-auto px-6 py-16 text-center">
-          {/* Badge */}
-          <div className="animate-fade-in-up inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm text-white px-5 py-2 rounded-full text-sm font-semibold mb-8 border border-white/30">
-            <span className="text-xl">🎁</span>
+      <section className="relative flex-1 flex flex-col items-center justify-center px-6 py-12 md:py-24">
+        
+        <div className="w-full max-w-4xl mx-auto text-center space-y-8">
+          <div className="inline-flex items-center gap-2 bg-white text-slate-800 px-5 py-2 rounded-full text-sm font-semibold border border-slate-200 shadow-sm">
+            <span>🎁</span>
             <span>100% Free — No Credit Card Needed</span>
           </div>
-
-          {/* Main heading */}
-          <h1
-            className="animate-fade-in-up delay-100 text-white font-bold leading-tight mb-6"
-            style={{
-              fontFamily: "var(--font-inter), sans-serif",
-              fontSize: "clamp(2.2rem, 5vw, 3.5rem)",
-            }}
-          >
-            Get a <span className="text-yellow-300">Free Crossword Puzzle Book</span><br />
-            Every Day for 30 Days!
+          
+          <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight text-slate-900 leading-tight">
+            Get a <span className="text-blue-600">Free Crossword Puzzle Book</span><br className="hidden md:block"/> Every Day for 30 Days.
           </h1>
-
-          {/* Subtitle */}
-          <p
-            className="animate-fade-in-up delay-200 text-white/90 mb-10 max-w-xl mx-auto leading-relaxed"
-            style={{ fontSize: "1.25rem" }}
-          >
-            Crossword puzzles delivered straight to your inbox.
-            Keep your mind sharp and entertained!
+          
+          <p className="text-lg md:text-xl text-slate-600 max-w-2xl mx-auto leading-relaxed">
+            Crossword puzzles delivered straight to your inbox. Keep your mind sharp and entertained with our premium daily collection.
           </p>
-
+          
           {/* Email Form */}
-          <div className="animate-fade-in-up delay-300">
-            <form
-              onSubmit={handleSubmit}
-              className="glass-card rounded-2xl p-8 max-w-md mx-auto"
-              id="subscribe-form"
-            >
-              <label
-                htmlFor="email-input"
-                className="block text-left text-gray-700 font-semibold mb-3"
-                style={{ fontFamily: "var(--font-inter), sans-serif", fontSize: "1rem" }}
-              >
-                Enter your email address:
-              </label>
-              <input
-                id="email-input"
-                type="email"
-                value={email}
-                onChange={(e) => {
-                  setEmail(e.target.value);
-                  if (status === "error") setStatus("idle");
-                }}
-                placeholder="your.email@example.com"
-                required
-                className="input-lg mb-4"
-                disabled={status === "loading"}
-                aria-describedby="email-help"
-              />
-              <p id="email-help" className="sr-only">
-                We will send you a free ebook every day for 30 days.
-              </p>
-
+          <div className="w-full max-w-2xl mx-auto mt-10">
+            <form onSubmit={handleSubmit} className="flex flex-col md:flex-row gap-3 shadow-xl bg-white p-3 rounded-2xl border border-slate-100">
+              <div className="flex-1">
+                <label htmlFor="email-input" className="sr-only">Enter your email address</label>
+                <input
+                  id="email-input"
+                  type="email"
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    if (status === "error") setStatus("idle");
+                  }}
+                  placeholder="your.email@example.com"
+                  required
+                  className="w-full h-14 px-6 text-lg rounded-xl border-none bg-slate-50 focus:ring-2 focus:ring-blue-600 outline-none transition-shadow text-slate-900 placeholder:text-slate-400"
+                  disabled={status === "loading"}
+                />
+              </div>
               <button
                 type="submit"
                 disabled={status === "loading" || !email}
-                className="btn-primary w-full flex items-center justify-center gap-3"
-                id="submit-button"
-                style={{ fontSize: "1.2rem" }}
+                className="h-14 px-8 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-lg flex items-center justify-center gap-3 transition-colors disabled:opacity-70 shadow-md shadow-blue-600/20"
               >
                 {status === "loading" ? (
                   <>
@@ -136,147 +90,88 @@ export default function LandingPage() {
                   </>
                 ) : (
                   <>
-                    <span className="text-2xl">📚</span>
-                    Send me free crossword puzzles
+                    <span className="text-xl">📚</span>
+                    Send me puzzles
                   </>
                 )}
               </button>
             </form>
-          </div>
-
-          {/* Success Message */}
-          {status === "success" && (
-            <div
-              className="toast-enter mt-6 max-w-md mx-auto bg-emerald-50 border-2 border-emerald-400 rounded-xl p-6 text-left"
-              role="alert"
-              id="success-alert"
-            >
-              <div className="flex items-start gap-3">
-                <span className="text-3xl flex-shrink-0">✅</span>
-                <div>
-                  <p className="font-bold text-emerald-800" style={{ fontSize: "1.15rem" }}>
-                    Success!
-                  </p>
-                  <p className="text-emerald-700 mt-1" style={{ fontSize: "1.05rem" }}>
-                    {message}
-                  </p>
-                </div>
+            
+            {/* Error Message */}
+            {status === "error" && (
+              <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-xl text-left flex items-start gap-3">
+                <span className="text-xl">⚠️</span>
+                <p className="text-red-800 font-medium">{message}</p>
               </div>
-            </div>
-          )}
-
-          {/* Error Message */}
-          {status === "error" && (
-            <div
-              className="toast-enter mt-6 max-w-md mx-auto bg-red-50 border-2 border-red-400 rounded-xl p-6 text-left"
-              role="alert"
-              id="error-alert"
-            >
-              <div className="flex items-start gap-3">
-                <span className="text-3xl flex-shrink-0">⚠️</span>
-                <div>
-                  <p className="font-bold text-red-800" style={{ fontSize: "1.15rem" }}>
-                    Oops!
-                  </p>
-                  <p className="text-red-700 mt-1" style={{ fontSize: "1.05rem" }}>
-                    {message}
-                  </p>
-                </div>
+            )}
+            
+            {/* Trust indicators */}
+            <div className="mt-8 flex flex-wrap justify-center gap-x-8 gap-y-4 text-slate-500 font-medium text-sm">
+              <div className="flex items-center gap-2">
+                <span>🔒</span>
+                <span>Secure & Private</span>
               </div>
-            </div>
-          )}
-
-          {/* Trust indicators */}
-          <div className="animate-fade-in-up delay-500 mt-10 flex flex-wrap justify-center gap-6 text-white/80">
-            <div className="flex items-center gap-2">
-              <span className="text-xl">🔒</span>
-              <span style={{ fontSize: "0.95rem" }}>Your email is safe</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xl">📧</span>
-              <span style={{ fontSize: "0.95rem" }}>Cancel anytime</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xl">💎</span>
-              <span style={{ fontSize: "0.95rem" }}>30 premium ebooks</span>
+              <div className="flex items-center gap-2">
+                <span>📧</span>
+                <span>Unsubscribe Anytime</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span>💎</span>
+                <span>30 Premium Books</span>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
       {/* Features Section */}
-      <section className="py-20 px-6" style={{ background: "linear-gradient(180deg, #fefefe 0%, #f8f6ff 100%)" }}>
-        <div className="max-w-5xl mx-auto">
-          <h2
-            className="text-center font-bold mb-4"
-            style={{
-              fontFamily: "var(--font-inter), sans-serif",
-              fontSize: "clamp(1.8rem, 3vw, 2.5rem)",
-              color: "#1a1a2e",
-            }}
-          >
-            How It Works
-          </h2>
-          <p className="text-center text-gray-500 mb-14 max-w-lg mx-auto" style={{ fontSize: "1.1rem" }}>
-            Three simple steps to start your daily reading adventure
-          </p>
+      <section className="py-24 bg-white border-t border-slate-100">
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl font-bold text-slate-900 mb-4">How It Works</h2>
+            <p className="text-slate-500 text-lg">Three simple steps to start your daily reading adventure</p>
+          </div>
 
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid md:grid-cols-3 gap-8 lg:gap-12">
             {[
-              {
-                icon: "✉️",
-                title: "1. Sign Up",
-                desc: "Enter your email address above. That's all we need!",
-                color: "#4263eb",
-              },
-              {
-                icon: "📬",
-                title: "2. Check Your Inbox",
-                desc: "Your first free crossword puzzle book arrives instantly.",
-                color: "#7c3aed",
-              },
-              {
-                icon: "📖",
-                title: "3. Enjoy Daily",
-                desc: "A new ebook every day for 30 days. Read at your own pace!",
-                color: "#f59e0b",
-              },
+              { icon: "✉️", title: "1. Sign Up", desc: "Enter your email address above. That's all we need." },
+              { icon: "📬", title: "2. Check Inbox", desc: "Your first free crossword puzzle book arrives instantly." },
+              { icon: "📖", title: "3. Enjoy Daily", desc: "A new ebook every day for 30 days. Read at your own pace." },
             ].map((step, i) => (
-              <div
-                key={i}
-                className="glass-card rounded-2xl p-8 text-center hover:scale-105 transition-transform duration-300"
-              >
-                <div
-                  className="w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-5"
-                  style={{ background: `${step.color}15` }}
-                >
-                  <span className="text-4xl">{step.icon}</span>
+              <div key={i} className="p-8 rounded-2xl bg-slate-50 border border-slate-100 text-center shadow-sm hover:shadow-md transition-shadow">
+                <div className="w-16 h-16 rounded-2xl bg-white shadow-sm flex items-center justify-center mx-auto mb-6 text-3xl">
+                  {step.icon}
                 </div>
-                <h3
-                  className="font-bold mb-3"
-                  style={{
-                    fontFamily: "var(--font-inter), sans-serif",
-                    fontSize: "1.3rem",
-                    color: step.color,
-                  }}
-                >
-                  {step.title}
-                </h3>
-                <p className="text-gray-600" style={{ fontSize: "1.05rem", lineHeight: "1.7" }}>
-                  {step.desc}
-                </p>
+                <h3 className="text-xl font-bold text-slate-900 mb-3">{step.title}</h3>
+                <p className="text-slate-600 leading-relaxed">{step.desc}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="py-8 px-6 text-center border-t border-gray-100" style={{ background: "#fafafa" }}>
-        <p className="text-gray-400" style={{ fontSize: "0.9rem" }}>
-          © {new Date().getFullYear()} ElectedBooks. All rights reserved.
-        </p>
+      <footer className="py-8 text-center bg-slate-900 text-slate-400 text-sm">
+        <p>© {new Date().getFullYear()} ElectedBooks. All rights reserved.</p>
       </footer>
+
+      {/* Success Modal */}
+      {showModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl text-center transform transition-all">
+            <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6 text-4xl">
+              ✅
+            </div>
+            <h3 className="text-2xl font-bold text-slate-900 mb-3">Success!</h3>
+            <p className="text-slate-600 mb-8 text-lg">{message}</p>
+            <button
+              onClick={() => setShowModal(false)}
+              className="w-full h-12 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-semibold transition-colors"
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
